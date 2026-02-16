@@ -71,9 +71,11 @@ type ControlUiAvatarMeta = {
   avatarUrl: string | null;
 };
 
-function applyControlUiSecurityHeaders(res: ServerResponse) {
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Content-Security-Policy", buildControlUiCspHeader());
+function applyControlUiSecurityHeaders(res: ServerResponse, allowedOrigins?: string[]) {
+  if (!(allowedOrigins && allowedOrigins.length > 0)) {
+    res.setHeader("X-Frame-Options", "DENY");
+  }
+  res.setHeader("Content-Security-Policy", buildControlUiCspHeader(allowedOrigins));
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Referrer-Policy", "no-referrer");
 }
@@ -92,7 +94,7 @@ function isValidAgentId(agentId: string): boolean {
 export function handleControlUiAvatarRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  opts: { basePath?: string; resolveAvatar: (agentId: string) => ControlUiAvatarResolution },
+  opts: { basePath?: string; allowedOrigins?: string[]; resolveAvatar: (agentId: string) => ControlUiAvatarResolution },
 ): boolean {
   const urlRaw = req.url;
   if (!urlRaw) {
@@ -112,7 +114,7 @@ export function handleControlUiAvatarRequest(
     return false;
   }
 
-  applyControlUiSecurityHeaders(res);
+  applyControlUiSecurityHeaders(res, opts.allowedOrigins);
 
   const agentIdParts = pathname.slice(pathWithBase.length).split("/").filter(Boolean);
   const agentId = agentIdParts[0] ?? "";
@@ -204,11 +206,12 @@ export function handleControlUiHttpRequest(
 
   const url = new URL(urlRaw, "http://localhost");
   const basePath = normalizeControlUiBasePath(opts?.basePath);
+  const origins = opts?.config?.gateway?.controlUi?.allowedOrigins;
   const pathname = url.pathname;
 
   if (!basePath) {
     if (pathname === "/ui" || pathname.startsWith("/ui/")) {
-      applyControlUiSecurityHeaders(res);
+      applyControlUiSecurityHeaders(res, origins);
       respondNotFound(res);
       return true;
     }
@@ -216,7 +219,7 @@ export function handleControlUiHttpRequest(
 
   if (basePath) {
     if (pathname === basePath) {
-      applyControlUiSecurityHeaders(res);
+      applyControlUiSecurityHeaders(res, origins);
       res.statusCode = 302;
       res.setHeader("Location", `${basePath}/${url.search}`);
       res.end();
@@ -227,7 +230,7 @@ export function handleControlUiHttpRequest(
     }
   }
 
-  applyControlUiSecurityHeaders(res);
+  applyControlUiSecurityHeaders(res, origins);
 
   const bootstrapConfigPath = basePath
     ? `${basePath}${CONTROL_UI_BOOTSTRAP_CONFIG_PATH}`
