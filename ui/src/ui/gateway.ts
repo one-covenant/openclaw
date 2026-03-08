@@ -48,6 +48,7 @@ export type GatewayBrowserClientOptions = {
   url: string;
   token?: string;
   password?: string;
+  delegatedJwtProvider?: () => Promise<string | undefined>;
   clientName?: GatewayClientName;
   clientVersion?: string;
   platform?: string;
@@ -145,6 +146,7 @@ export class GatewayBrowserClient {
     let deviceIdentity: Awaited<ReturnType<typeof loadOrCreateDeviceIdentity>> | null = null;
     let canFallbackToShared = false;
     let authToken = this.opts.token;
+    const delegatedJwt = await this.opts.delegatedJwtProvider?.();
 
     if (isSecureContext) {
       deviceIdentity = await loadOrCreateDeviceIdentity();
@@ -152,14 +154,19 @@ export class GatewayBrowserClient {
         deviceId: deviceIdentity.deviceId,
         role,
       })?.token;
-      authToken = storedToken ?? this.opts.token;
+      // Prefer an explicit shared token from the embedding page over any cached
+      // device token. Local/manual deployments rotate shared gateway tokens per
+      // instance, so reusing a device token minted against a previous instance
+      // can cause "device_token_mismatch" on connect.
+      authToken = this.opts.token ?? storedToken;
       canFallbackToShared = Boolean(storedToken && this.opts.token);
     }
     const auth =
-      authToken || this.opts.password
+      authToken || this.opts.password || delegatedJwt
         ? {
             token: authToken,
             password: this.opts.password,
+            delegatedJwt,
           }
         : undefined;
 

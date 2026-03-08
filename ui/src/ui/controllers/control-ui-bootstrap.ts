@@ -4,6 +4,7 @@ import {
 } from "../../../../src/gateway/control-ui-contract.js";
 import { normalizeAssistantIdentity } from "../assistant-identity.ts";
 import { normalizeBasePath } from "../navigation.ts";
+import { setAuth0BootstrapConfig } from "./auth0.ts";
 
 export type ControlUiBootstrapState = {
   basePath: string;
@@ -40,6 +41,7 @@ export async function loadControlUiBootstrapConfig(state: ControlUiBootstrapStat
       name: parsed.assistantName,
       avatar: parsed.assistantAvatar ?? null,
     });
+    setAuth0BootstrapConfig(parsed.auth0);
     state.assistantName = normalized.name;
     state.assistantAvatar = normalized.avatar;
     state.assistantAgentId = normalized.agentId ?? null;

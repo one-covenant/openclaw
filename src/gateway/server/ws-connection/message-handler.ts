@@ -32,6 +32,7 @@ import {
 } from "../../auth-rate-limit.js";
 import { authorizeGatewayConnect, isLocalDirectRequest } from "../../auth.js";
 import { buildDeviceAuthPayload } from "../../device-auth.js";
+import { setDelegatedJwtForConnection } from "../../mcp-auth-store.js";
 import { isLoopbackAddress, isTrustedProxyAddress, resolveGatewayClientIp } from "../../net.js";
 import { resolveHostName } from "../../net.js";
 import { resolveNodeCommandAllowlist } from "../../node-command-policy.js";
@@ -859,6 +860,7 @@ export function attachGatewayWsMessageHandler(params: {
           clientIp: reportedClientIp,
         };
         setClient(nextClient);
+        setDelegatedJwtForConnection(connId, connectParams.auth?.delegatedJwt);
         setHandshakeState("connected");
         if (role === "node") {
           const context = buildRequestContext();

@@ -94,7 +94,11 @@ function isValidAgentId(agentId: string): boolean {
 export function handleControlUiAvatarRequest(
   req: IncomingMessage,
   res: ServerResponse,
-  opts: { basePath?: string; allowedOrigins?: string[]; resolveAvatar: (agentId: string) => ControlUiAvatarResolution },
+  opts: {
+    basePath?: string;
+    allowedOrigins?: string[];
+    resolveAvatar: (agentId: string) => ControlUiAvatarResolution;
+  },
 ): boolean {
   const urlRaw = req.url;
   if (!urlRaw) {
@@ -257,6 +261,16 @@ export function handleControlUiHttpRequest(
       assistantName: identity.name,
       assistantAvatar: avatarValue ?? identity.avatar,
       assistantAgentId: identity.agentId,
+      auth0: {
+        enabled: Boolean(
+          process.env.OPENCLAW_AUTH0_DOMAIN &&
+          process.env.OPENCLAW_AUTH0_CLIENT_ID &&
+          process.env.OPENCLAW_AUTH0_AUDIENCE,
+        ),
+        domain: process.env.OPENCLAW_AUTH0_DOMAIN,
+        clientId: process.env.OPENCLAW_AUTH0_CLIENT_ID,
+        audience: process.env.OPENCLAW_AUTH0_AUDIENCE,
+      },
     } satisfies ControlUiBootstrapConfig);
     return true;
   }

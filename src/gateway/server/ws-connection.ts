@@ -10,6 +10,7 @@ import { removeRemoteNodeInfo } from "../../infra/skills-remote.js";
 import { listSystemPresence, upsertPresence } from "../../infra/system-presence.js";
 import { truncateUtf16Safe } from "../../utils.js";
 import { isWebchatClient } from "../../utils/message-channel.js";
+import { clearDelegatedJwtForConnection } from "../mcp-auth-store.js";
 import { isLoopbackAddress } from "../net.js";
 import { getHandshakeTimeoutMs } from "../server-constants.js";
 import { formatError } from "../server-utils.js";
@@ -171,6 +172,7 @@ export function attachGatewayWsConnectionHandler(params: {
       }
       closed = true;
       clearTimeout(handshakeTimer);
+      clearDelegatedJwtForConnection(connId);
       if (client) {
         clients.delete(client);
       }

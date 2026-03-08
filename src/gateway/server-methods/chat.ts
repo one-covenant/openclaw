@@ -22,6 +22,7 @@ import {
 } from "../chat-abort.js";
 import { type ChatImageContent, parseMessageWithAttachments } from "../chat-attachments.js";
 import { stripEnvelopeFromMessages } from "../chat-sanitize.js";
+import { bindConnectionToSession } from "../mcp-auth-store.js";
 import { GATEWAY_CLIENT_CAPS, hasGatewayClientCap } from "../protocol/client-info.js";
 import {
   ErrorCodes,
@@ -570,6 +571,9 @@ export const chatHandlers: GatewayRequestHandlers = {
     }
     const rawSessionKey = p.sessionKey;
     const { cfg, entry, canonicalKey: sessionKey } = loadSessionEntry(rawSessionKey);
+    if (client?.connId) {
+      bindConnectionToSession(client.connId, sessionKey);
+    }
     const timeoutMs = resolveAgentTimeoutMs({
       cfg,
       overrideMs: p.timeoutMs,

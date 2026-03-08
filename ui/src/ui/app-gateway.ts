@@ -15,6 +15,7 @@ import {
 import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream.ts";
 import { loadAgents } from "./controllers/agents.ts";
 import { loadAssistantIdentity } from "./controllers/assistant-identity.ts";
+import { getDelegatedJwt } from "./controllers/auth0.ts";
 import { loadChatHistory } from "./controllers/chat.ts";
 import { handleChatEvent, type ChatEventPayload } from "./controllers/chat.ts";
 import { loadDevices } from "./controllers/devices.ts";
@@ -127,6 +128,7 @@ export function connectGateway(host: GatewayHost) {
     url: host.settings.gatewayUrl,
     token: host.settings.token.trim() ? host.settings.token : undefined,
     password: host.password.trim() ? host.password : undefined,
+    delegatedJwtProvider: getDelegatedJwt,
     clientName: "openclaw-control-ui",
     mode: "webchat",
     onHello: (hello) => {

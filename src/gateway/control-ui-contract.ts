@@ -5,4 +5,10 @@ export type ControlUiBootstrapConfig = {
   assistantName: string;
   assistantAvatar: string;
   assistantAgentId: string;
+  auth0?: {
+    enabled: boolean;
+    domain?: string;
+    clientId?: string;
+    audience?: string;
+  };
 };
