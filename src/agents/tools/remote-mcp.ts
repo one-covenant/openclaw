@@ -8,12 +8,17 @@ import { jsonResult, ToolInputError } from "./common.js";
 const MANIFEST_ENV_KEY = "BITTENSOR_MCP_MANIFEST";
 const URL_ENV_KEY = "BITTENSOR_MCP_URL";
 const ENABLED_PLUGINS_ENV_KEY = "BITTENSOR_MCP_ENABLED_PLUGINS";
+const BASILICA_AUTH_TOKEN_ENV_KEY = "BASILICA_AUTH_TOKEN";
+const BASILICA_AUTH_TOKEN_HEADER = "x-basilica-api-token";
 const MCP_PLUGIN_OPTIONS = {
   basilica: {
     pluginName: "Basilica GPU Cloud",
   },
   numinous: {
     pluginName: "Numinous Predictions",
+  },
+  synthdata: {
+    pluginName: "SynthData Forecasting",
   },
 } as const;
 
@@ -31,6 +36,7 @@ type RemoteMcpManifest = {
 type RemoteMcpClientState = {
   endpoint: string;
   jwt?: string;
+  basilicaAuthToken?: string;
   clientPromise: Promise<Client>;
 };
 
@@ -114,6 +120,9 @@ function loadEnabledPlugins(): string[] {
     if (name.startsWith("numinous_")) {
       inferred.add("numinous");
     }
+    if (name.startsWith("synthdata_")) {
+      inferred.add("synthdata");
+    }
   }
   return Array.from(inferred);
 }
@@ -134,26 +143,32 @@ async function enableConfiguredPlugins(client: Client, pluginIds: string[]): Pro
 }
 
 async function getClient(endpoint: string, jwt: string | undefined): Promise<Client> {
-  const stateKey = `${endpoint}::${jwt ?? ""}`;
+  const basilicaAuthToken = process.env[BASILICA_AUTH_TOKEN_ENV_KEY]?.trim();
+  const stateKey = `${endpoint}::${jwt ?? ""}::${basilicaAuthToken ?? ""}`;
   let state = clientStates.get(stateKey);
   if (!state) {
     const enabledPlugins = loadEnabledPlugins();
     state = {
       endpoint,
       jwt,
+      basilicaAuthToken,
       clientPromise: (async () => {
         const client = new Client({
           name: "openclaw-remote-mcp",
           version: process.env.OPENCLAW_VERSION ?? process.env.npm_package_version ?? "dev",
         });
         const transport = new StreamableHTTPClientTransport(new URL(endpoint), {
-          requestInit: jwt
-            ? {
-                headers: {
-                  Authorization: `Bearer ${jwt}`,
-                },
-              }
-            : undefined,
+          requestInit:
+            jwt || basilicaAuthToken
+              ? {
+                  headers: {
+                    ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
+                    ...(basilicaAuthToken
+                      ? { [BASILICA_AUTH_TOKEN_HEADER]: basilicaAuthToken }
+                      : {}),
+                  },
+                }
+              : undefined,
         });
         await client.connect(transport);
         await enableConfiguredPlugins(client, enabledPlugins);
@@ -181,7 +196,8 @@ async function callRemoteTool(params: {
       })
     );
   } catch (error) {
-    const stateKey = `${params.endpoint}::${jwt ?? ""}`;
+    const basilicaAuthToken = process.env[BASILICA_AUTH_TOKEN_ENV_KEY]?.trim();
+    const stateKey = `${params.endpoint}::${jwt ?? ""}::${basilicaAuthToken ?? ""}`;
     clientStates.delete(stateKey);
     const message = error instanceof Error ? error.message : formatUnknown(error);
     const recoverable =
